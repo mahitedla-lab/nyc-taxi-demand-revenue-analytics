@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: int_trips_dq_flagged
+    description: >
+      Every raw trip with one 0/1 flag per data-quality rule (rules defined in macros/dq_rules.sql),
+      the number of rules failed, the first rule matched, and is_valid. Rejected trips are kept here
+      for auditing; only valid trips flow into fct_trips.
+    columns:
+      - name: is_valid
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false
+      - name: dq_failed_rule_count
+        data_tests:
+          - not_null
+
+  - name: dq_exclusion_summary
+    description: >
+      One row per data-quality rule showing how many trips it catches. This is the documented
+      record of every exclusion applied to the raw TLC data.
+    columns:
+      - name: rule_code
+        data_tests:
+          - unique
+          - not_null

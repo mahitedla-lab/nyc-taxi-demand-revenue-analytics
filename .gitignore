@@ -1,0 +1,12 @@
+data/
+*.parquet
+target/
+dbt_packages/
+logs/
+profiles.yml
+.env
+__pycache__/
+
+ci/.user.yml
+*.duckdb
+.venv/

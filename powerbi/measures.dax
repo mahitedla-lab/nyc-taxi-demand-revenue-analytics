@@ -1,0 +1,70 @@
+// ============================================================================
+// DAX measures for the NYC taxi dashboard.
+// Tables (imported from Snowflake schema ANALYTICS):
+//   agg_hourly_demand, agg_revenue_per_mile, agg_airport_share_by_borough, agg_revenue_per_trip_hour
+// All source columns are additive sums, so ratios are always computed here
+// (sum / sum), never as an average of pre-computed ratios.
+// ============================================================================
+
+// ---- Hourly demand page -----------------------------------------------------
+Trips            = SUM ( agg_hourly_demand[trips] )
+Revenue          = SUM ( agg_hourly_demand[revenue] )
+Miles            = SUM ( agg_hourly_demand[miles] )
+Trip Hours       = SUM ( agg_hourly_demand[trip_hours] )
+
+Avg Revenue per Trip = DIVIDE ( [Revenue], [Trips] )
+Revenue per Mile     = DIVIDE ( [Revenue], [Miles] )
+Revenue per Trip Hour = DIVIDE ( [Revenue], [Trip Hours] )
+
+// Average trips in a given clock hour (use with hour_of_day on the axis)
+Avg Trips per Hour Slot =
+    DIVIDE ( [Trips], DISTINCTCOUNT ( agg_hourly_demand[time_key] ) )
+
+// Share of all trips; works inside any slicer / axis context
+Trip Share of Total =
+    DIVIDE ( [Trips], CALCULATE ( [Trips], ALLSELECTED ( agg_hourly_demand ) ) )
+
+// ---- Revenue per mile page (zone-month table) --------------------------------
+Zone Revenue per Mile =
+    DIVIDE (
+        SUM ( agg_revenue_per_mile[revenue] ),
+        SUM ( agg_revenue_per_mile[miles] )
+    )
+
+Zone Trips = SUM ( agg_revenue_per_mile[trips] )
+
+// ---- Airport share page ------------------------------------------------------
+Borough Trips   = SUM ( agg_airport_share_by_borough[trips] )
+Airport Trips   = SUM ( agg_airport_share_by_borough[airport_trips] )
+Airport Trip Share = DIVIDE ( [Airport Trips], [Borough Trips] )
+
+Airport Revenue = SUM ( agg_airport_share_by_borough[airport_revenue] )
+Borough Revenue = SUM ( agg_airport_share_by_borough[revenue] )
+Airport Revenue Share = DIVIDE ( [Airport Revenue], [Borough Revenue] )
+
+// ---- Best revenue windows page (168 day x hour windows) -------------------------
+Window Revenue per Trip Hour =
+    DIVIDE (
+        SUM ( agg_revenue_per_trip_hour[revenue] ),
+        SUM ( agg_revenue_per_trip_hour[trip_hours] )
+    )
+
+Window Trips = SUM ( agg_revenue_per_trip_hour[trips] )
+
+// Rank of the selected window among all 168 (ignores filters on day/hour)
+Window Rank =
+    RANKX (
+        ALL ( agg_revenue_per_trip_hour[day_name], agg_revenue_per_trip_hour[hour_of_day] ),
+        [Window Revenue per Trip Hour],
+        ,
+        DESC,
+        DENSE
+    )
+
+// Conditional-format helper: 1 if the window is in the top decile
+Is Top Window = IF ( [Window Rank] <= 17, 1, 0 )
+
+// Label for cards / titles
+Window Label =
+    SELECTEDVALUE ( agg_revenue_per_trip_hour[day_name] ) & " "
+        & FORMAT ( SELECTEDVALUE ( agg_revenue_per_trip_hour[hour_of_day] ), "00" ) & ":00"

@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: stg_yellow_trips
+    description: >
+      Typed and renamed yellow taxi trips. Same row count as the raw table - nothing is
+      filtered here. trip_key is a hash of every trip field, so exact duplicates share a key.
+    columns:
+      - name: trip_key
+        data_tests:
+          - not_null
+      - name: source_file
+        data_tests:
+          - not_null
+
+  - name: stg_taxi_zones
+    description: Taxi zone lookup with trimmed text columns.
+    columns:
+      - name: location_id
+        data_tests:
+          - unique
+          - not_null

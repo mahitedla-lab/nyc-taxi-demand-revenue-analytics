@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: agg_hourly_demand
+    description: Trips, revenue, miles and trip hours by pickup hour and pickup borough (feeds the hourly demand page in Power BI).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [time_key, pickup_borough]
+    columns:
+      - name: trips
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+
+  - name: agg_revenue_per_mile
+    description: Revenue, miles and revenue per mile by pickup zone and month.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [zone_key, month_start]
+    columns:
+      - name: revenue_per_mile
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+  - name: agg_airport_share_by_borough
+    description: Share of trips and revenue that touch an airport, by pickup borough and month.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [pickup_borough, month_start]
+    columns:
+      - name: airport_trip_share
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+
+  - name: agg_revenue_per_trip_hour
+    description: Revenue per trip hour for each of the 168 day-of-week x hour-of-day windows, ranked.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [day_of_week_num, hour_of_day]
+    columns:
+      - name: revenue_per_trip_hour
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0

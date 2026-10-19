@@ -1,0 +1,34 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: Raw NYC TLC data loaded by scripts/load_to_snowflake.py, untouched.
+    tables:
+      - name: yellow_trips_raw
+        description: One row per yellow taxi trip as published by the NYC TLC (Parquet monthly files).
+        columns:
+          # Source-level checks are warnings: they quantify raw data problems without blocking the build.
+          # The exclusions themselves are enforced (and audited) in int_trips_dq_flagged.
+          - name: tpep_pickup_datetime
+            data_tests:
+              - not_null:
+                  config:
+                    severity: warn
+          - name: tpep_dropoff_datetime
+            data_tests:
+              - not_null:
+                  config:
+                    severity: warn
+          - name: source_file
+            description: Parquet file the row was loaded from.
+            data_tests:
+              - not_null
+
+      - name: taxi_zone_lookup
+        description: TLC taxi zone lookup (zone ID -> borough, zone name, service zone).
+        columns:
+          - name: locationid
+            data_tests:
+              - unique
+              - not_null

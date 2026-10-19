@@ -1,0 +1,15 @@
+# Production profile. Copy to ~/.dbt/profiles.yml and export the SNOWFLAKE_* variables
+# so credentials never enter the repo. (CI uses ci/profiles.yml with DuckDB instead.)
+nyc_taxi:
+  target: prod
+  outputs:
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: SYSADMIN
+      database: NYC_TAXI
+      warehouse: TAXI_WH
+      schema: ANALYTICS
+      threads: 4

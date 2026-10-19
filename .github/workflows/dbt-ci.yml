@@ -1,0 +1,30 @@
+name: dbt-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  dbt-build-on-synthetic-sample:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements-ci.txt
+
+      - name: Build synthetic sample database
+        run: python ci/make_sample_data.py
+
+      - name: dbt deps + build (models and tests)
+        working-directory: dbt
+        run: |
+          dbt deps
+          dbt build --profiles-dir ../ci --target ci
+
+      - name: Verify every data-quality rule catches exactly what was planted
+        run: python ci/verify_dq_counts.py

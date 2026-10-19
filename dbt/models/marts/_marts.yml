@@ -1,0 +1,141 @@
+version: 2
+
+models:
+  - name: dim_zone
+    description: Taxi zone dimension (role-playing as pickup and dropoff zone). One row per TLC zone.
+    columns:
+      - name: zone_key
+        data_tests:
+          - unique
+          - not_null
+      - name: borough
+        data_tests:
+          - not_null
+      - name: is_airport
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false
+
+  - name: dim_time
+    description: Hourly time dimension (role-playing as pickup and dropoff time). One row per clock hour.
+    columns:
+      - name: time_key
+        data_tests:
+          - unique
+          - not_null
+      - name: hour_of_day
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+                quote: false
+      - name: day_of_week_num
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1, 2, 3, 4, 5, 6]
+                quote: false
+
+  - name: fct_trips
+    description: >
+      One row per valid yellow taxi trip (star-schema fact). Trips failing any data-quality rule
+      are excluded; see dq_exclusion_summary for what was removed and why.
+    data_tests:
+      # Timestamps: dropoff must be after pickup, pickup must be inside the analysis window
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "dropoff_datetime > pickup_datetime"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "pickup_datetime >= '{{ var('data_start_date') }}' and pickup_datetime < '{{ var('data_end_date') }}'"
+      # Charges cannot be negative
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "tip_amount >= 0 and tolls_amount >= 0 and extra >= 0 and trip_revenue > 0"
+    columns:
+      - name: trip_id
+        data_tests:
+          - unique
+          - not_null
+      - name: pickup_time_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_time')
+                field: time_key
+      - name: dropoff_time_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_time')
+                field: time_key
+      - name: pickup_zone_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: zone_key
+      - name: dropoff_zone_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_zone')
+                field: zone_key
+      - name: pickup_datetime
+        data_tests:
+          - not_null
+      - name: dropoff_datetime
+        data_tests:
+          - not_null
+      # --- fare tests ---
+      - name: fare_amount
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+                max_value: "{{ var('max_fare_amount') }}"
+      - name: total_amount
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+      # --- distance tests ---
+      - name: trip_distance
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+                max_value: "{{ var('max_trip_distance_miles') }}"
+      # --- duration / timestamp tests ---
+      - name: trip_duration_minutes
+        data_tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: false
+                max_value: "{{ var('max_trip_duration_minutes') }}"
+      - name: avg_speed_mph
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: "{{ var('max_avg_speed_mph') }}"
+      - name: passenger_count
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: "{{ var('max_passenger_count') }}"

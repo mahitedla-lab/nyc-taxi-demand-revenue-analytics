@@ -1,0 +1,35 @@
+name: nyc_taxi
+version: "1.0.0"
+config-version: 2
+profile: nyc_taxi
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+clean-targets: ["target", "dbt_packages"]
+
+# Thresholds used by the data-quality rules (macros/dq_rules.sql) and the dbt tests.
+# They are judgment calls: change one and re-run to see how sensitive the results are.
+vars:
+  data_start_date: "2023-01-01"      # inclusive
+  data_end_date: "2024-01-01"        # exclusive
+  max_trip_duration_minutes: 1440    # 24 hours
+  max_avg_speed_mph: 100
+  max_trip_distance_miles: 100
+  max_fare_amount: 500
+  max_passenger_count: 8
+
+models:
+  nyc_taxi:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: table
+      +schema: staging
+    marts:
+      +materialized: table
+      +schema: marts
+    analytics:
+      +materialized: table
+      +schema: analytics
